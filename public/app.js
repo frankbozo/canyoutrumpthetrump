@@ -589,6 +589,10 @@ function viewAbout() {
           this site is making, and it writes itself.
         </p>
         <p>
+          If you believe you can outdo what is actually happening, that is a remarkable
+          claim and almost certainly an unachievable one. File anyway.
+        </p>
+        <p>
           Everything here is invented by members of the public as satire. Nothing on this
           site is a real policy, a real quote, or a real statement by anyone. If something
           slipped through that shouldn't have, the <a href="/terms">takedown page</a> tells
