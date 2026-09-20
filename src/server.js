@@ -9,6 +9,7 @@ import {
   needsReview, safeSourceUrl, clamp, REALITY_THRESHOLD,
 } from './lib.js';
 import { shell } from './views.js';
+import { notifySubmission, notifyStatus } from './notify.js';
 import { loadSeed } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -204,6 +205,10 @@ app.post('/api/posts', async (req, res, next) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [slugify(headline), headline, body, author, desk, status, voter],
     );
+
+    // Mail the desk. Deliberately not awaited: delivery must not delay
+    // the response, and a mail failure must not fail the submission.
+    notifySubmission(r.rows[0], status === 'pending');
 
     res.status(201).json({
       post: shapePost(r.rows[0]),
@@ -502,6 +507,7 @@ const boot = async () => {
   // First boot against an empty database loads seed.json for you, so a
   // fresh deploy is never a blank site and never needs shell access.
   await autoSeed(() => loadSeed());
+  console.log(notifyStatus());
   app.listen(PORT, () => console.log(`[www] listening on :${PORT}`));
 };
 
