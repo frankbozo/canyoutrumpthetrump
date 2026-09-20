@@ -5,7 +5,7 @@
   "description": "A satire forum where readers propose policies more unbelievable than the news, and vote on which ones reality has already caught up to.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node src/server.js",
