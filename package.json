@@ -1,0 +1,20 @@
+{
+  "name": "canyoutrumpthetrump",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A satire forum where readers propose policies more unbelievable than the news, and vote on which ones reality has already caught up to.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
