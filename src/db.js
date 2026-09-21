@@ -7,11 +7,46 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+/**
+ * TLS for the database connection.
+ *
+ * DATABASE_SSL picks the mode:
+ *   verify     full TLS, certificate checked against the system CAs. The
+ *              right setting, and what Neon, Supabase and Fly all support —
+ *              their certificates come from public CAs.
+ *   no-verify  encrypted but unauthenticated: the connection cannot be read
+ *              in transit, but nothing proves the far end is your database,
+ *              so an attacker positioned on the path can impersonate it.
+ *   disable    no TLS. Local sockets only.
+ *
+ * The default stays `no-verify`, which is what this file did before, so no
+ * existing deployment changes behaviour on upgrade. Set DATABASE_SSL=verify
+ * once you have confirmed your provider's certificate chain resolves — on a
+ * managed Postgres it almost always does.
+ */
+function sslConfig(url) {
+  const mode = process.env.DATABASE_SSL
+    || (/@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url) ? 'disable' : 'no-verify');
+
+  switch (mode) {
+    case 'disable': return false;
+    case 'verify': return { rejectUnauthorized: true };
+    case 'no-verify': return { rejectUnauthorized: false };
+    default:
+      throw new Error(`DATABASE_SSL must be verify, no-verify or disable (got "${mode}")`);
+  }
+}
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+  ssl: sslConfig(process.env.DATABASE_URL),
   max: 8,
 });
+
+// A pool error outside a query (a dropped backend, a failed keepalive) is
+// emitted on the pool itself. Unhandled, it is an unhandled 'error' event,
+// which takes the whole process down.
+pool.on('error', (e) => console.error('[db] idle client error:', e.message));
 
 export const q = (text, params) => pool.query(text, params);
 

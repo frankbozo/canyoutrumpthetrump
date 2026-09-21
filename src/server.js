@@ -3,10 +3,10 @@ import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { q, migrate, autoSeed } from './db.js';
+import { q, pool, migrate, autoSeed } from './db.js';
 import {
   voterOf, readVoter, rateLimit, clientIp, slugify, hotScore, isBlackMarked,
-  needsReview, safeSourceUrl, clamp, REALITY_THRESHOLD,
+  needsReview, safeSourceUrl, clamp, REALITY_THRESHOLD, postId, adminToken, safeEqual,
 } from './lib.js';
 import { shell } from './views.js';
 import { notifySubmission, notifyStatus } from './notify.js';
@@ -18,6 +18,45 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '64kb' }));
 app.use(cookieParser());
+
+// Baseline security headers. Hand-rolled rather than pulling in helmet: the
+// set that matters for a server-rendered page with no inline script and no
+// third-party frames is short, and a dependency here would be most of a
+// megabyte to set six headers.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  // Google Fonts is the only third-party origin the page touches. The
+  // bootstrap payload rides in a JSON script tag, not inline JS, so
+  // script-src needs no 'unsafe-inline'.
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      // No inline <script> anywhere and no on* attributes in the rendered
+      // markup, so this needs no 'unsafe-inline' — which is the half of CSP
+      // that actually stops an injected payload from running.
+      "script-src 'self'",
+      // 'unsafe-inline' here is for the handful of style="" attributes in
+      // app.js, not a stylesheet. Drop it the day those move into
+      // styles.css; until then it buys an attacker nothing that script-src
+      // does not already deny.
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      // data: and blob: are the share-card canvas writing its own PNG.
+      "img-src 'self' data: blob:",
+      "connect-src 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "object-src 'none'",
+    ].join('; '),
+  );
+  next();
+});
 app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 
 const REQUIRE_APPROVAL = process.env.REQUIRE_APPROVAL !== 'false';
@@ -72,6 +111,25 @@ async function myState(voter, postIds) {
 }
 
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
+
+/**
+ * Resolve a path id to a post that is actually on the wire.
+ *
+ * The write routes used to take :id straight from the path, so a known or
+ * guessed id could be voted on, rated, reality-checked or commented on while
+ * the post was still in the moderation queue, already rejected, or held back
+ * by a scheduled publish_at. Votes cast that way counted the moment the post
+ * went live. Returns the id when the post is public, null otherwise.
+ */
+async function livePostId(raw) {
+  const id = postId(raw);
+  if (!id) return null;
+  const r = await q(
+    `SELECT id FROM posts WHERE id = $1 AND status = 'live' AND publish_at <= NOW()`,
+    [id],
+  );
+  return r.rows.length ? id : null;
+}
 
 /* ================================================================== *
  * API — reading
@@ -226,9 +284,11 @@ app.post('/api/posts/:id/vote', async (req, res, next) => {
     if (!gate.ok) return res.status(429).json({ error: 'rate_limited' });
 
     const voter = voterOf(req, res);
-    const id = req.params.id;
     const dir = Number(req.body.dir);
     if (![1, -1, 0].includes(dir)) return res.status(400).json({ error: 'bad_direction' });
+
+    const id = await livePostId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
 
     const prev = await q(`SELECT value FROM votes WHERE post_id = $1 AND voter = $2`, [id, voter]);
     const old = prev.rows[0]?.value ?? 0;
@@ -265,7 +325,6 @@ app.post('/api/posts/:id/reality', async (req, res, next) => {
     if (!gate.ok) return res.status(429).json({ error: 'rate_limited' });
 
     const voter = voterOf(req, res);
-    const id = req.params.id;
     const url = safeSourceUrl(String(req.body.source_url || '').trim());
     const note = String(req.body.note || '').trim().slice(0, 300);
 
@@ -275,6 +334,9 @@ app.post('/api/posts/:id/reality', async (req, res, next) => {
         message: 'A reality check needs a link to the real story. That is the whole point.',
       });
     }
+
+    const id = await livePostId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
 
     await q(
       `INSERT INTO reality_checks (post_id, voter, source_url, note)
@@ -313,9 +375,14 @@ app.post('/api/posts/:id/plausibility', async (req, res, next) => {
     if (!gate.ok) return res.status(429).json({ error: 'rate_limited' });
 
     const voter = voterOf(req, res);
-    const id = req.params.id;
-    const score = clamp(Math.round(Number(req.body.score)), 0, 100);
-    if (!Number.isFinite(score)) return res.status(400).json({ error: 'bad_score' });
+    // Validate before clamping rather than after. clamp() only happens to
+    // pass NaN through untouched, so the old order was correct by accident.
+    const raw = Number(req.body.score);
+    if (!Number.isFinite(raw)) return res.status(400).json({ error: 'bad_score' });
+    const score = clamp(Math.round(raw), 0, 100);
+
+    const id = await livePostId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
 
     await q(
       `INSERT INTO plausibility (post_id, voter, score) VALUES ($1,$2,$3)
@@ -348,16 +415,19 @@ app.post('/api/posts/:id/comments', async (req, res, next) => {
     if (body.length < 2) return res.status(400).json({ error: 'too_short' });
     if (body.length > 1000) return res.status(400).json({ error: 'too_long' });
 
+    const id = await livePostId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
+
     const status = needsReview(body) ? 'pending' : 'live';
     const r = await q(
       `INSERT INTO comments (post_id, author, body, status, submitter)
        VALUES ($1,$2,$3,$4,$5) RETURNING id, author, body, created_at`,
-      [req.params.id, author, body, status, voter],
+      [id, author, body, status, voter],
     );
     await q(
       `UPDATE posts SET comment_count =
         (SELECT COUNT(*) FROM comments WHERE post_id = $1 AND status = 'live') WHERE id = $1`,
-      [req.params.id],
+      [id],
     );
 
     res.status(201).json({
@@ -373,19 +443,22 @@ app.post('/api/report', async (req, res, next) => {
     if (!gate.ok) return res.status(429).json({ error: 'rate_limited' });
 
     const voter = voterOf(req, res);
-    const postId = req.body.post_id ? String(req.body.post_id) : null;
-    const commentId = req.body.comment_id ? String(req.body.comment_id) : null;
-    if (!postId && !commentId) return res.status(400).json({ error: 'nothing_reported' });
+    // Named apart from the imported postId() validator, which this used to
+    // shadow. Both ids are screened now: an unparseable one used to reach
+    // Postgres and come back as a 500.
+    const reportedPost = req.body.post_id ? postId(req.body.post_id) : null;
+    const reportedComment = req.body.comment_id ? postId(req.body.comment_id) : null;
+    if (!reportedPost && !reportedComment) return res.status(400).json({ error: 'nothing_reported' });
 
     await q(
       `INSERT INTO reports (post_id, comment_id, reason, reporter) VALUES ($1,$2,$3,$4)`,
-      [postId, commentId, String(req.body.reason || '').slice(0, 300), voter],
+      [reportedPost, reportedComment, String(req.body.reason || '').slice(0, 300), voter],
     );
-    if (postId) {
+    if (reportedPost) {
       await q(
         `UPDATE posts SET report_count =
           (SELECT COUNT(*) FROM reports WHERE post_id = $1) WHERE id = $1`,
-        [postId],
+        [reportedPost],
       );
     }
     res.json({ ok: true, message: 'Reported. Someone will look at it.' });
@@ -396,16 +469,36 @@ app.post('/api/report', async (req, res, next) => {
  * Admin
  * ================================================================== */
 
+// The cookie carries a key-derived token, never the key itself. The header
+// still takes the raw key, so scripted admin calls keep working unchanged.
+const ADMIN_COOKIE = ADMIN_KEY ? adminToken(ADMIN_KEY) : '';
+
 function requireAdmin(req, res, next) {
   if (!ADMIN_KEY) return res.status(503).json({ error: 'admin_disabled', message: 'ADMIN_KEY is not set.' });
-  const given = req.get('x-admin-key') || req.cookies?.admin;
-  if (given !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
+  const header = req.get('x-admin-key');
+  const cookie = req.cookies?.admin;
+  // safeEqual, not ===, so response time does not narrow the key down
+  // one character at a time.
+  const ok = (header && safeEqual(header, ADMIN_KEY)) || (cookie && safeEqual(cookie, ADMIN_COOKIE));
+  if (!ok) return res.status(401).json({ error: 'unauthorized' });
   next();
 }
 
 app.post('/api/admin/login', (req, res) => {
-  if (!ADMIN_KEY || req.body.key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
-  res.cookie('admin', ADMIN_KEY, {
+  // This endpoint had no limiter at all, which left ADMIN_KEY open to an
+  // unbounded online guessing loop. Ten tries an hour per address.
+  const gate = rateLimit({ key: `adminlogin:${clientIp(req)}`, limit: 10, windowMs: 60 * 60 * 1000 });
+  if (!gate.ok) {
+    return res.status(429).json({
+      error: 'rate_limited',
+      message: `Too many attempts. Try again in ${Math.ceil(gate.retryAfter / 60)} minutes.`,
+    });
+  }
+
+  if (!ADMIN_KEY || !safeEqual(String(req.body.key ?? ''), ADMIN_KEY)) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  res.cookie('admin', ADMIN_COOKIE, {
     httpOnly: true, sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 12 * 60 * 60 * 1000,
@@ -435,7 +528,9 @@ app.get('/api/admin/queue', requireAdmin, async (req, res, next) => {
 
 app.post('/api/admin/posts/:id/:action', requireAdmin, async (req, res, next) => {
   try {
-    const { id, action } = req.params;
+    const { action } = req.params;
+    const id = postId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
     if (action === 'approve') await q(`UPDATE posts SET status = 'live' WHERE id = $1`, [id]);
     else if (action === 'reject') await q(`UPDATE posts SET status = 'rejected' WHERE id = $1`, [id]);
     else if (action === 'delete') await q(`DELETE FROM posts WHERE id = $1`, [id]);
@@ -552,7 +647,9 @@ app.post('/api/admin/schedule/clear', requireAdmin, async (req, res, next) => {
 
 app.post('/api/admin/comments/:id/:action', requireAdmin, async (req, res, next) => {
   try {
-    const { id, action } = req.params;
+    const { action } = req.params;
+    const id = postId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'not_found' });
     if (action === 'approve') await q(`UPDATE comments SET status = 'live' WHERE id = $1`, [id]);
     else if (action === 'delete') await q(`DELETE FROM comments WHERE id = $1`, [id]);
     else return res.status(400).json({ error: 'unknown_action' });
@@ -608,13 +705,50 @@ app.use((err, req, res, _next) => {
 
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Shut down without dropping requests.
+ *
+ * A deploy sends SIGTERM and then waits. Without a handler the process died
+ * on the spot: in-flight votes and submissions were cut mid-response and the
+ * Postgres pool was left for the server to time out. Stop accepting new
+ * connections, let the open ones finish, then drain the pool.
+ */
+function shutdownOn(server) {
+  let closing = false;
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.on(signal, () => {
+      if (closing) return; // a second signal during drain should not re-enter
+      closing = true;
+      console.log(`[www] ${signal} — finishing in-flight requests`);
+
+      // Don't hang a deploy forever on one stuck connection.
+      const hardStop = setTimeout(() => {
+        console.warn('[www] drain timed out, exiting anyway');
+        process.exit(1);
+      }, 10_000);
+      hardStop.unref?.();
+
+      server.close(async () => {
+        try {
+          await pool.end();
+        } catch (e) {
+          console.warn('[db] pool did not close cleanly:', e.message);
+        }
+        clearTimeout(hardStop);
+        process.exit(0);
+      });
+    });
+  }
+}
+
 const boot = async () => {
   await migrate();
   // First boot against an empty database loads seed.json for you, so a
   // fresh deploy is never a blank site and never needs shell access.
   await autoSeed(() => loadSeed());
   console.log(notifyStatus());
-  app.listen(PORT, () => console.log(`[www] listening on :${PORT}`));
+  const server = app.listen(PORT, () => console.log(`[www] listening on :${PORT}`));
+  shutdownOn(server);
 };
 
 boot().catch((e) => { console.error('[boot] failed', e); process.exit(1); });
