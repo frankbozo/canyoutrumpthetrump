@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the engines field, and what Render builds with.
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Parses every source file, then runs the suite. No database needed:
+      # these cover the pure logic — signing, rate limiting, id screening,
+      # scoring, escaping — which is where the security-relevant code lives.
+      - run: npm run check

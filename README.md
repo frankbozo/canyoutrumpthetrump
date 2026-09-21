@@ -73,6 +73,17 @@ npm run dev
 
 Open http://localhost:3000.
 
+### Checks
+
+```bash
+npm test        # the suite
+npm run check   # parse every source file, then run the suite
+```
+
+No database and no network needed: the tests cover the pure logic — cookie
+signing, rate limiting, id screening, scoring, HTML escaping — which is where
+anything security-relevant lives. Both run in CI on every push and pull request.
+
 ---
 
 ## Adding your starting proposals
@@ -117,9 +128,8 @@ When you trust the flow enough to stop gatekeeping, set `REQUIRE_APPROVAL=false`
 Submissions then go live immediately — except anything that trips the content
 tripwire in `src/lib.js`, which is always held for review regardless.
 
-**Before you launch**, open `/terms` and replace the placeholder contact line with a
-real address people can send takedown requests to. It's the one piece of content
-left deliberately blank.
+**`/terms`** carries the takedown contact address. It lives in `viewTerms()` in
+`public/app.js` — change it there if the address ever changes.
 
 ---
 
@@ -193,7 +203,37 @@ public/
   og-default.png, favicon.svg, robots.txt
 seed.json      your starting proposals (empty)
 render.yaml    Render deployment config
+test/          node --test suites for lib.js and views.js
+.github/       CI: parses the sources and runs the suite
 ```
+
+## Security notes
+
+A few things worth knowing if you change this code:
+
+- **Rate limits key off `req.ip`**, which Express resolves using the
+  `trust proxy` setting at the top of `server.js`. Don't swap that for
+  `X-Forwarded-For` directly — the client writes the left-hand end of that
+  header, so a fresh value per request buys a fresh bucket and every limit in
+  the app becomes decorative.
+
+  `trust proxy` is set to `1`, meaning *exactly one* proxy sits in front. That
+  is true on Render, whose load balancer appends the real client address to
+  `X-Forwarded-For`; `req.ip` is that appended value and the client cannot
+  reach it. If you ever run this process with nothing in front of it, or with
+  two proxies, change that number to match — set to `1` with no proxy present,
+  Express will trust the header the client sent.
+- **`SESSION_SECRET` is mandatory in production.** Without it the server exits
+  on boot instead of signing voter cookies with the fallback secret that is
+  published in this repo.
+- **The admin cookie holds a derived token, not `ADMIN_KEY`.** The raw key is
+  accepted only in the `x-admin-key` header. Key comparisons go through
+  `safeEqual`, not `===`.
+- **Write routes resolve ids through `livePostId`**, which rejects anything
+  non-numeric and anything not currently on the wire. That is what stops votes
+  landing on posts still in the queue or held back by a scheduled release.
+- **`DATABASE_SSL=verify`** is the setting you want once you've confirmed your
+  provider's certificate chain resolves. See `.env.example`.
 
 ## What to build next
 
