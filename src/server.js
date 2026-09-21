@@ -89,7 +89,7 @@ app.get('/api/posts', async (req, res, next) => {
     let rows;
     if (sort === 'hot') {
       const all = await q(
-        `SELECT * FROM posts WHERE status = 'live' ORDER BY created_at DESC LIMIT 500`,
+        `SELECT * FROM posts WHERE status = 'live' AND publish_at <= NOW() ORDER BY created_at DESC LIMIT 500`,
       );
       rows = all.rows
         .sort((a, b) => hotScore(b) - hotScore(a))
@@ -97,14 +97,14 @@ app.get('/api/posts', async (req, res, next) => {
     } else {
       const order = sort === 'new' ? 'created_at DESC' : '(ups - downs) DESC, created_at DESC';
       const r = await q(
-        `SELECT * FROM posts WHERE status = 'live' ORDER BY ${order} LIMIT $1 OFFSET $2`,
+        `SELECT * FROM posts WHERE status = 'live' AND publish_at <= NOW() ORDER BY ${order} LIMIT $1 OFFSET $2`,
         [perPage, (page - 1) * perPage],
       );
       rows = r.rows;
     }
 
     const mine = await myState(voter, rows.map((r) => r.id));
-    const total = await q(`SELECT COUNT(*)::int AS n FROM posts WHERE status = 'live'`);
+    const total = await q(`SELECT COUNT(*)::int AS n FROM posts WHERE status = 'live' AND publish_at <= NOW()`);
 
     res.json({
       posts: rows.map((p) => shapePost(p, mine[p.id] || {})),
@@ -119,7 +119,7 @@ app.get('/api/reality', async (req, res, next) => {
   try {
     const voter = readVoter(req);
     const r = await q(
-      `SELECT * FROM posts WHERE status = 'live' AND overtaken_at IS NOT NULL
+      `SELECT * FROM posts WHERE status = 'live' AND publish_at <= NOW() AND overtaken_at IS NOT NULL
        ORDER BY overtaken_at DESC LIMIT 100`,
     );
     const mine = await myState(voter, r.rows.map((x) => x.id));
@@ -140,7 +140,7 @@ app.get('/api/reality', async (req, res, next) => {
 app.get('/api/posts/:slug', async (req, res, next) => {
   try {
     const voter = readVoter(req);
-    const r = await q(`SELECT * FROM posts WHERE slug = $1 AND status = 'live'`, [req.params.slug]);
+    const r = await q(`SELECT * FROM posts WHERE slug = $1 AND status = 'live' AND publish_at <= NOW()`, [req.params.slug]);
     if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
     const p = r.rows[0];
     const mine = await myState(voter, [p.id]);
@@ -428,7 +428,7 @@ app.get('/api/admin/queue', requireAdmin, async (req, res, next) => {
       posts: posts.rows.map((p) => shapePost(p)),
       comments: comments.rows.map((c) => ({ ...c, id: String(c.id), post_id: String(c.post_id) })),
       reports: reports.rows.map((r) => ({ ...r, id: String(r.id) })),
-      liveCount: (await q(`SELECT COUNT(*)::int AS n FROM posts WHERE status = 'live'`)).rows[0].n,
+      liveCount: (await q(`SELECT COUNT(*)::int AS n FROM posts WHERE status = 'live' AND publish_at <= NOW()`)).rows[0].n,
     });
   } catch (e) { next(e); }
 });
@@ -441,6 +441,112 @@ app.post('/api/admin/posts/:id/:action', requireAdmin, async (req, res, next) =>
     else if (action === 'delete') await q(`DELETE FROM posts WHERE id = $1`, [id]);
     else return res.status(400).json({ error: 'unknown_action' });
     res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+/* ------------------------------------------------------------------ *
+ * Scheduled release
+ *
+ * A live post is public only once its publish_at has passed, so a batch
+ * of posts can be dripped out over a window instead of landing at once.
+ * No cron, no background worker: visibility is decided by the query at
+ * read time, so it stays correct even when the instance has been asleep.
+ * ------------------------------------------------------------------ */
+
+// What is queued but not yet public.
+app.get('/api/admin/schedule', requireAdmin, async (req, res, next) => {
+  try {
+    const r = await q(
+      `SELECT id, slug, headline, publish_at FROM posts
+        WHERE status = 'live' AND publish_at > NOW()
+        ORDER BY publish_at ASC`,
+    );
+    res.json({
+      pending: r.rows.length,
+      posts: r.rows.map((p) => ({
+        id: String(p.id),
+        slug: p.slug,
+        headline: p.headline,
+        publishAt: p.publish_at,
+        inMinutes: Math.round((new Date(p.publish_at) - Date.now()) / 60000),
+      })),
+    });
+  } catch (e) { next(e); }
+});
+
+/**
+ * Spread currently-public posts across a future window.
+ *
+ * body: {
+ *   hours      how long the drip runs           (default 24)
+ *   keepLive   newest N stay visible now        (default 1)
+ *   startIn    minutes before the first release (default 0)
+ *   retime     also move created_at to match    (default true)
+ *   jitter     +/- 20% wobble between slots     (default true)
+ * }
+ *
+ * retime matters: the byline reads "filed 3h ago" off created_at, so
+ * without it a post released tomorrow would surface already looking a
+ * day stale. Votes, comments and reality checks are untouched either way.
+ */
+app.post('/api/admin/schedule/spread', requireAdmin, async (req, res, next) => {
+  try {
+    // num() keeps a garbage value from turning into NaN dates downstream.
+    const num = (v, dflt, lo, hi) => {
+      const n = Number(v ?? dflt);
+      return clamp(Number.isFinite(n) ? n : dflt, lo, hi);
+    };
+    const hours = num(req.body.hours, 24, 0.1, 24 * 14);
+    const keepLive = num(req.body.keepLive, 1, 0, 100);
+    const startIn = num(req.body.startIn, 0, 0, 60 * 24);
+    const retime = req.body.retime !== false;
+    const jitter = req.body.jitter !== false;
+
+    // Newest first, so keepLive holds back the freshest posts.
+    const all = await q(
+      `SELECT id, slug, headline FROM posts
+        WHERE status = 'live' AND publish_at <= NOW()
+        ORDER BY created_at DESC`,
+    );
+    const queue = all.rows.slice(keepLive).reverse(); // oldest releases first
+    if (!queue.length) {
+      return res.json({ scheduled: 0, kept: all.rows.length, posts: [] });
+    }
+
+    const windowMs = hours * 3600 * 1000;
+    const step = windowMs / queue.length;
+    const now = Date.now() + startIn * 60 * 1000;
+
+    const out = [];
+    for (let i = 0; i < queue.length; i++) {
+      const wobble = jitter ? (Math.random() - 0.5) * step * 0.4 : 0;
+      // i + 1: the first release is one slot in, never instantly, and the
+      // last lands at the end of the window even after wobble.
+      const at = new Date(
+        Math.min(now + windowMs, Math.max(now + 60000, now + step * (i + 1) + wobble)),
+      );
+      const p = queue[i];
+      await q(
+        retime
+          ? `UPDATE posts SET publish_at = $2, created_at = $2 WHERE id = $1`
+          : `UPDATE posts SET publish_at = $2 WHERE id = $1`,
+        [p.id, at],
+      );
+      out.push({ id: String(p.id), headline: p.headline, publishAt: at });
+    }
+
+    console.log(`[schedule] ${out.length} post(s) spread over ${hours}h`);
+    res.json({ scheduled: out.length, kept: keepLive, hours, posts: out });
+  } catch (e) { next(e); }
+});
+
+// Undo: make everything public again right now.
+app.post('/api/admin/schedule/clear', requireAdmin, async (req, res, next) => {
+  try {
+    const r = await q(
+      `UPDATE posts SET publish_at = NOW() WHERE publish_at > NOW() RETURNING id`,
+    );
+    res.json({ released: r.rows.length });
   } catch (e) { next(e); }
 });
 
@@ -467,7 +573,7 @@ app.get('/admin', (req, res) => res.send(shell({ view: 'admin', origin: ORIGIN }
 
 app.get('/p/:slug', async (req, res, next) => {
   try {
-    const r = await q(`SELECT * FROM posts WHERE slug = $1 AND status = 'live'`, [req.params.slug]);
+    const r = await q(`SELECT * FROM posts WHERE slug = $1 AND status = 'live' AND publish_at <= NOW()`, [req.params.slug]);
     if (!r.rows.length) return res.status(404).send(shell({ view: 'notfound', origin: ORIGIN }));
     const p = r.rows[0];
     res.send(shell({

@@ -35,10 +35,15 @@ CREATE TABLE IF NOT EXISTS posts (
   plaus_sum     INTEGER NOT NULL DEFAULT 0,
   plaus_n       INTEGER NOT NULL DEFAULT 0,
   submitter     TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Scheduled release: a live post stays hidden from the public until
+  -- this moment. Defaults to NOW(), so anything approved normally is
+  -- visible immediately and the column is invisible unless you use it.
+  publish_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS posts_status_created ON posts (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS posts_status_publish ON posts (status, publish_at);
 CREATE INDEX IF NOT EXISTS posts_overtaken ON posts (overtaken_at DESC NULLS LAST);
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -91,6 +96,9 @@ CREATE TABLE IF NOT EXISTS reports (
 
 export async function migrate() {
   await q(SCHEMA);
+  // Additive migrations for databases created before a column existed.
+  // IF NOT EXISTS makes each one safe to run on every boot.
+  await q(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   console.log('[db] schema ready');
 }
 
