@@ -593,6 +593,14 @@ function viewAbout() {
           claim and almost certainly an unachievable one. File anyway.
         </p>
         <p>
+          <strong>The standing offer.</strong> Three proposals moved to
+          <a href="/reality">Overtaken by Reality</a> is the quota. If you hit the quota,
+          we should talk &mdash; <a href="mailto:ryan@hypnoticmindscapes.com">ryan@hypnoticmindscapes.com</a>.
+          There's a bigger thing to build here: Kalshi and Polymarket let you bet on what
+          happens, and we'd rather build the version that pays the people who saw it coming.
+          You need to do worse.
+        </p>
+        <p>
           Everything here is invented by members of the public as satire. Nothing on this
           site is a real policy, a real quote, or a real statement by anyone. If something
           slipped through that shouldn't have, the <a href="/terms">takedown page</a> tells
