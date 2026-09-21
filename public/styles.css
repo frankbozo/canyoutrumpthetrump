@@ -145,6 +145,17 @@ a:hover { text-decoration-color: var(--accent); }
   margin: 0;
 }
 
+/* The tagline proper. Set in the mono voice so it reads as a standing order
+   rather than a caption; the line under it stays the italic aside. */
+.masthead__tag--lead {
+  color: var(--ink);
+  font-family: var(--f-mono);
+  font-size: .8125rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+
 /* The satire label is part of the furniture, not a disclaimer at the
    bottom of a page nobody opens. */
 .badge-satire {

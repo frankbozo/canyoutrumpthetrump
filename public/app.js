@@ -49,7 +49,8 @@ function chrome(current, inner) {
   <div class="wrap masthead__inner">
     <h1 class="masthead__title"><a href="/">Can You Trump the Trump?</a></h1>
     <span class="badge-satire">Satire</span>
-    <p class="masthead__tag">The news is unbelievable. Try to do worse.</p>
+    <p class="masthead__tag masthead__tag--lead">DO WORSE.</p>
+    <p class="masthead__tag">Every other outlet stands accused of inventing the news. We simply start here.</p>
   </div>
   <div class="wrap dateline mono">
     <span>Wire Desk &middot; Vol. 1</span>
@@ -80,6 +81,10 @@ function chrome(current, inner) {
       <span class="rider__label">Notice to President DJT</span>
       For any money you make from ideas on this site, I expect a 50% cut.
       Open to negotiating a deal.
+    </p>
+    <p class="rider">
+      With the news already accused of making itself up, we may as well do it properly.
+      Open to the smartest and the brightest. We are America and we are great again.
     </p>
     <p class="made">Proudly created in Canada &#127809;</p>
   </div>
@@ -173,6 +178,21 @@ async function viewFeed() {
   if (!['hot', 'new', 'top'].includes(sort)) sort = 'hot';
 
   render('feed', `
+    <div class="article">
+      <div class="article__body">
+        <p>
+          <em>Idiocracy</em> was released as a comedy and is now routinely cited as a
+          forecast. Nobody here knows what comes after it. This desk has run out of ideas and
+          is accepting submissions on step two.
+        </p>
+        <p>
+          Anyone with a straight face and a mean streak is welcome to file. When reality
+          catches up with a proposal, it goes on the permanent record &mdash; and whether that
+          record reads as comedy or as tragedy, we accept both sides. Three confirmations and
+          you stop being a reader. You become talent.
+        </p>
+      </div>
+    </div>
     <div class="sorts">
       <button data-sort="hot" aria-pressed="${sort === 'hot'}">Hot</button>
       <button data-sort="new" aria-pressed="${sort === 'new'}">Newest</button>
@@ -222,8 +242,10 @@ async function viewReality() {
       <h2 class="article__head">Overtaken by Reality</h2>
       <p class="article__body">
         Proposals that readers invented as jokes, and that the news subsequently
-        caught up with. Each one carries the sources that confirmed it. This page
-        writes itself.
+        caught up with. Each one carries the sources that confirmed it, and the date it
+        stopped being funny. What accumulates here is a live historical timeline of this
+        period. Whether it reads as comedy or as tragedy is not for us to decide, and we
+        accept both sides.
       </p>
     </div>
     <ul class="feed" id="feed"></ul>
@@ -244,6 +266,14 @@ async function viewReality() {
             Nothing on the wire has been overtaken yet. When three readers independently
             flag a proposal as already having happened &mdash; each with a source &mdash;
             it lands here permanently.
+          </p>
+          <p>
+            Three confirmations and you stop being a reader. You become talent. The open
+            question is whether anyone can out-file the esteemed businessman, television
+            personality and well-known playboy who currently holds the record. We are securing
+            talent for the future of the United States, and a confirmed hat trick grants you
+            access to our onboarding session: a new apprentice, working title
+            <em>Donald Trump Jr.</em>, broadcast rights pending.
           </p>
           <a class="btn btn--quiet" href="/">Back to the wire</a>
         </div>`));
@@ -499,6 +529,11 @@ function viewSubmit() {
         One rule: it has to be less believable than what actually happened this week.
         Write it straight, the way a real bulletin would. The deadpan is the joke.
       </p>
+      <p class="article__body">
+        This desk has run out of ideas and is accepting submissions on step two. Anyone
+        with a straight face and a mean streak is welcome to file. Three confirmations and you
+        stop being a reader. You become talent.
+      </p>
     </div>
     <form class="form" id="submit-form">
       <div class="field">
@@ -572,9 +607,22 @@ function viewAbout() {
       <h2 class="article__head">About this wire</h2>
       <div class="article__body">
         <p>
-          The premise is a complaint dressed up as a game. The news has gotten hard to
-          believe, so this site asks you to try and beat it: propose something a government
-          might plausibly do that it hasn't done yet, and write it as straight as a real bulletin.
+          Every day the news is accused of being invented. Here it is invented openly, in
+          public, by whoever turns up, and signed. Nothing on this wire is news. That is the
+          only difference.
+        </p>
+        <p>
+          Can you file something too absurd to ever happen, or something so plausible it is
+          only a matter of time? Both are accepted. The archive decides which was which.
+        </p>
+        <p>
+          <em>Idiocracy</em> was released as a comedy and is now routinely cited as a
+          forecast. Nobody here knows what comes after it. This desk has run out of ideas and
+          is accepting submissions on step two.
+        </p>
+        <p>
+          Propose something a government might plausibly do that it hasn't done yet, and
+          write it as straight as a real bulletin.
         </p>
         <p>
           Readers vote. Proposals that clear the bar rise. Proposals the room finds lazy
@@ -586,11 +634,22 @@ function viewAbout() {
           being a joke &mdash; if the thing actually happens &mdash; any reader can flag it
           with a link to the real story. Three independent flags move it permanently to
           <a href="/reality">Overtaken by Reality</a>. That archive is the actual argument
-          this site is making, and it writes itself.
+          this site is making, and it writes itself. What accumulates there is a live
+          historical timeline of this period. Whether it reads as comedy or as tragedy is not
+          for us to decide, and we accept both sides.
         </p>
         <p>
           If you believe you can outdo what is actually happening, that is a remarkable
-          claim and almost certainly an unachievable one. File anyway.
+          claim and almost certainly an unachievable one. File anyway. Your contributions are
+          appreciated; someone, somewhere, is clearly taking notes.
+        </p>
+        <p>
+          <strong>The standing offer.</strong> Three proposals moved to
+          <a href="/reality">Overtaken by Reality</a> is the quota. If you hit the quota,
+          we should talk &mdash; <a href="mailto:ryan@hypnoticmindscapes.com">ryan@hypnoticmindscapes.com</a>.
+          There's a bigger thing to build here: Kalshi and Polymarket let you bet on what
+          happens, and we'd rather build the version that pays the people who saw it coming.
+          You need to do worse.
         </p>
         <p>
           Everything here is invented by members of the public as satire. Nothing on this
@@ -626,7 +685,7 @@ function viewTerms() {
         is wrong with it. Removals are processed promptly and without argument.</p>
 
         <p class="mono" style="text-transform:none;letter-spacing:0;font-size:.9rem">
-          &#9635; Replace this line with your contact address before launch.
+          ryan@hypnoticmindscapes.com
         </p>
 
         <p><strong>Privacy.</strong> The site sets one cookie: a random identifier so your
