@@ -43,7 +43,6 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 CREATE INDEX IF NOT EXISTS posts_status_created ON posts (status, created_at DESC);
-CREATE INDEX IF NOT EXISTS posts_status_publish ON posts (status, publish_at);
 CREATE INDEX IF NOT EXISTS posts_overtaken ON posts (overtaken_at DESC NULLS LAST);
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -99,6 +98,9 @@ export async function migrate() {
   // Additive migrations for databases created before a column existed.
   // IF NOT EXISTS makes each one safe to run on every boot.
   await q(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  // Indexes on added columns go here, never in SCHEMA: on a database that
+  // predates the column, SCHEMA runs before the ALTER above.
+  await q(`CREATE INDEX IF NOT EXISTS posts_status_publish ON posts (status, publish_at)`);
   console.log('[db] schema ready');
 }
 
