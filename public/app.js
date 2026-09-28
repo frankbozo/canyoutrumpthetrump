@@ -180,7 +180,6 @@ async function viewFeed() {
         </p>
         <p>
           When reality catches up with one, it goes on the permanent record.
-          Three of yours confirmed and we should talk.
         </p>
       </div>
     </div>
@@ -503,8 +502,7 @@ function viewSubmit() {
       <p class="article__slug mono">Wire Desk</p>
       <h2 class="article__head">File a Proposal</h2>
       <p class="article__body">
-        One rule: less believable than what actually happened this week.
-        Write it straight. The deadpan is the joke.
+        Can you out-Trump the Trump? Genius or insane? Share your thoughts.
       </p>
     </div>
     <form class="form" id="submit-form">
@@ -591,11 +589,6 @@ function viewAbout() {
           <strong>Reality Check.</strong> When a proposal actually happens, flag it with a
           link. Three flags move it to <a href="/reality">Overtaken by Reality</a> for good.
           That archive is the whole point.
-        </p>
-        <p>
-          <strong>The offer.</strong> Three of your proposals overtaken by reality and we
-          should talk: <a href="mailto:ryan@hypnoticmindscapes.com">ryan@hypnoticmindscapes.com</a>.
-          There's a bigger thing to build for the people who saw it coming.
         </p>
         <p>
           All satire. Nothing here is a real policy, quote, or statement by anyone.
