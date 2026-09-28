@@ -1,7 +1,7 @@
 import { escapeHtml } from './lib.js';
 
 // Bump on every deploy that touches public/ so browsers drop their cached copy.
-const ASSET_VERSION = '2026-09-27a';
+const ASSET_VERSION = '2026-09-27c';
 
 const DEFAULT_TITLE = 'Can You Trump the Trump?';
 const DEFAULT_DESC =

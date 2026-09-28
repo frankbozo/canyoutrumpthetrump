@@ -59,7 +59,9 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 
-const REQUIRE_APPROVAL = process.env.REQUIRE_APPROVAL !== 'false';
+// Proposals publish instantly. Anything the content screen trips on still
+// waits for review. Set REVIEW_ALL=true to hold every submission instead.
+const REQUIRE_APPROVAL = process.env.REVIEW_ALL === 'true';
 const ORIGIN = (process.env.SITE_ORIGIN || '').replace(/\/$/, '');
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 
@@ -222,11 +224,11 @@ app.get('/api/posts/:slug', async (req, res, next) => {
 
 app.post('/api/posts', async (req, res, next) => {
   try {
-    const gate = rateLimit({ key: `submit:${clientIp(req)}`, limit: 5, windowMs: 60 * 60 * 1000 });
+    const gate = rateLimit({ key: `submit:${clientIp(req)}`, limit: 10, windowMs: 60 * 60 * 1000 });
     if (!gate.ok) {
       return res.status(429).json({
         error: 'rate_limited',
-        message: `You've filed five proposals this hour. Try again in ${Math.ceil(gate.retryAfter / 60)} minutes.`,
+        message: `You've filed ten proposals this hour. Try again in ${Math.ceil(gate.retryAfter / 60)} minutes.`,
       });
     }
 
@@ -363,7 +365,7 @@ app.post('/api/posts/:id/reality', async (req, res, next) => {
       post,
       message: post.overtaken
         ? 'Confirmed. Reality got there first.'
-        : `Logged. ${REALITY_THRESHOLD - post.realityCount} more and this moves to Overtaken By Reality.`,
+        : `Logged. ${REALITY_THRESHOLD - post.realityCount} more and this moves to Came True.`,
     });
   } catch (e) { next(e); }
 });
@@ -647,6 +649,35 @@ app.post('/api/admin/import', requireAdmin, async (req, res, next) => {
     if (!rows) return res.status(400).json({ error: 'bad_request', message: 'Send { posts: [...] }.' });
     const added = await insertRows(rows);
     res.json({ added, skipped: rows.length - added });
+  } catch (e) { next(e); }
+});
+
+/**
+ * Desk override for the reality check: mark a post as come true with one
+ * source, no three-reader threshold. body: { source_url, note }
+ */
+app.post('/api/admin/posts/:id/overtake', requireAdmin, async (req, res, next) => {
+  try {
+    const id = postId(req.params.id);
+    const url = safeSourceUrl(String(req.body.source_url || '').trim());
+    const note = String(req.body.note || '').trim().slice(0, 300);
+    if (!id) return res.status(404).json({ error: 'not_found' });
+    if (!url) return res.status(400).json({ error: 'bad_source', message: 'Needs a link to the real story.' });
+    await q(
+      `INSERT INTO reality_checks (post_id, voter, source_url, note, status)
+       VALUES ($1,'desk',$2,$3,'confirmed')
+       ON CONFLICT (post_id, voter) DO UPDATE SET source_url = EXCLUDED.source_url, note = EXCLUDED.note`,
+      [id, url, note],
+    );
+    const r = await q(
+      `UPDATE posts SET
+         reality_count = (SELECT COUNT(*) FROM reality_checks WHERE post_id = $1 AND status <> 'rejected'),
+         overtaken_at = COALESCE(overtaken_at, NOW())
+       WHERE id = $1 RETURNING *`,
+      [id],
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
+    res.json({ post: shapePost(r.rows[0]) });
   } catch (e) { next(e); }
 });
 
