@@ -524,6 +524,10 @@ app.get('/api/admin/queue', requireAdmin, async (req, res, next) => {
       comments: comments.rows.map((c) => ({ ...c, id: String(c.id), post_id: String(c.post_id) })),
       reports: reports.rows.map((r) => ({ ...r, id: String(r.id) })),
       liveCount: (await q(`SELECT COUNT(*)::int AS n FROM posts WHERE status = 'live' AND publish_at <= NOW()`)).rows[0].n,
+      // Not-yet-overtaken live posts, for the "mark as came true" picker.
+      live: (await q(
+        `SELECT id, headline FROM posts WHERE status = 'live' AND overtaken_at IS NULL ORDER BY created_at DESC LIMIT 500`,
+      )).rows.map((p) => ({ id: String(p.id), headline: p.headline })),
     });
   } catch (e) { next(e); }
 });
