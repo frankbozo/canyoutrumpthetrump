@@ -2,8 +2,7 @@ import { escapeHtml } from './lib.js';
 
 const DEFAULT_TITLE = 'Can You Trump the Trump?';
 const DEFAULT_DESC =
-  'SATIRE. A reader-run wire service for policy proposals too absurd to be real — until they are. '
-  + 'Vote, comment, and flag the ones reality has already overtaken.';
+  'SATIRE. Invent a policy, vote on the ones that could happen, flag the ones that did.';
 
 export function shell({ view, origin = '', meta = {}, bootstrap = {} }) {
   const title = meta.title || DEFAULT_TITLE;
