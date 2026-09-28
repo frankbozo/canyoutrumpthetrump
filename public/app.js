@@ -53,15 +53,11 @@ function chrome(current, inner) {
       <p class="masthead__tag masthead__tag--lead">DO WORSE.</p>
     </div>
   </div>
-  <div class="wrap dateline mono">
-    <span>Wire Desk &middot; Vol. 1</span>
-    <span>${esc(longDate())}</span>
-  </div>
   <div class="wrap">
     <nav class="sections" aria-label="Sections">
-      <a href="/" ${current === 'feed' ? 'aria-current="page"' : ''}>The Wire</a>
-      <a href="/reality" ${current === 'reality' ? 'aria-current="page"' : ''}>Overtaken by Reality</a>
-      <a href="/submit" ${current === 'submit' ? 'aria-current="page"' : ''}>File a Proposal</a>
+      <a href="/" ${current === 'feed' ? 'aria-current="page"' : ''}>Proposals</a>
+      <a href="/reality" ${current === 'reality' ? 'aria-current="page"' : ''}>Came True</a>
+      <a href="/submit" ${current === 'submit' ? 'aria-current="page"' : ''}>Submit</a>
       <span class="spacer"></span>
       <a href="/about" ${current === 'about' ? 'aria-current="page"' : ''}>About</a>
     </nav>
@@ -71,15 +67,11 @@ function chrome(current, inner) {
 <footer>
   <div class="wrap">
     <div class="links mono">
-      <a href="/about">About</a><a href="/terms">Terms &amp; Takedowns</a><a href="/submit">File a Proposal</a>
+      <a href="/about">About</a><a href="/terms">Terms &amp; Takedowns</a><a href="/submit">Submit</a>
     </div>
     <p class="disclaimer">
       <strong>Satire.</strong> Every proposal here is invented by a member of the public.
       Nothing is a real policy, quote, or statement by anyone.
-    </p>
-    <p class="rider">
-      <span class="rider__label">Notice to President DJT</span>
-      Any money you make from ideas on this site, I expect a 50% cut.
     </p>
     <p class="made">Proudly created in Canada &#127809;</p>
   </div>
@@ -102,30 +94,54 @@ function plausMarkup(p) {
   </span>`;
 }
 
+/* One-tap plausibility vote. Three buttons map onto the 0-100 scale the
+   post page's slider uses, so both feed the same crowd average. */
+const ASK = [
+  { score: 10, label: 'Never' },
+  { score: 50, label: 'Maybe' },
+  { score: 90, label: 'Absolutely' },
+];
+const askBucket = (s) => (s === null ? null : s <= 30 ? 10 : s >= 70 ? 90 : 50);
+
+function askMarkup(p) {
+  const mine = askBucket(p.myPlausibility);
+  const crowd = p.plausibility === null
+    ? 'Be the first to call it.'
+    : `<strong>${p.plausibility}%</strong> likely &middot; ${p.plausibilityVotes} vote${p.plausibilityVotes === 1 ? '' : 's'}`;
+  return `
+    <div class="ask">
+      <span class="ask__q">Would this actually happen?</span>
+      <span class="ask__btns">${ASK.map((a) =>
+        `<button data-plaus="${a.score}" aria-pressed="${mine === a.score}">${a.label}</button>`).join('')}</span>
+      <span class="ask__crowd">${crowd}</span>
+    </div>`;
+}
+
 function itemMarkup(p) {
   const cls = ['item', p.blackMarked ? 'is-marked' : '', p.overtaken ? 'is-overtaken' : ''].filter(Boolean).join(' ');
   return `
-<li class="${cls}" data-id="${p.id}">
-  <div class="rail">
-    <button class="vote-up" aria-label="Upvote" aria-pressed="${p.myVote === 1}">&#9650;</button>
-    <span class="score num ${p.net > 0 ? 'pos' : p.net < 0 ? 'neg' : ''}">${p.net > 0 ? '+' : ''}${p.net}</span>
-    <button class="vote-down" aria-label="Downvote" aria-pressed="${p.myVote === -1}">&#9660;</button>
-  </div>
-  <div>
-    <h2 class="item__head">
-      <a href="/p/${esc(p.slug)}">${esc(p.headline)}</a>
-      ${p.overtaken ? '<span class="stamp">&#9635; Overtaken by reality</span>' : ''}
-      ${p.blackMarked ? '<span class="stamp is-mark" title="The community judged this one intellectually insufficient.">&#9632; Black mark</span>' : ''}
-    </h2>
-    ${p.body ? `<p class="item__lede">${esc(p.body.slice(0, 220))}${p.body.length > 220 ? '&hellip;' : ''}</p>` : ''}
-    <div class="item__meta">
-      <span>Filed by ${esc(p.author)}</span>
-      <span class="sep">&middot;</span>
-      <span>${ago(p.createdAt)}</span>
-      <span class="sep">&middot;</span>
-      <a href="/p/${esc(p.slug)}">${p.commentCount} comment${p.commentCount === 1 ? '' : 's'}</a>
-      ${p.plausibility !== null ? '<span class="sep">&middot;</span>' + plausMarkup(p) : ''}
-    </div>
+<li class="${cls}" data-id="${p.id}" data-slug="${esc(p.slug)}">
+  <h2 class="item__head">
+    <a href="/p/${esc(p.slug)}">${esc(p.headline)}</a>
+    ${p.overtaken ? '<span class="stamp">&#9635; Came true</span>' : ''}
+    ${p.blackMarked ? '<span class="stamp is-mark" title="The community judged this one intellectually insufficient.">&#9632; Black mark</span>' : ''}
+  </h2>
+  ${p.body ? `<p class="item__lede">${esc(p.body.slice(0, 220))}${p.body.length > 220 ? '&hellip;' : ''}</p>` : ''}
+  ${askMarkup(p)}
+  <div class="item__meta">
+    <span class="rail">
+      <button class="vote-up" aria-label="Upvote" aria-pressed="${p.myVote === 1}">&#9650;</button>
+      <span class="score num ${p.net > 0 ? 'pos' : p.net < 0 ? 'neg' : ''}">${p.net > 0 ? '+' : ''}${p.net}</span>
+      <button class="vote-down" aria-label="Downvote" aria-pressed="${p.myVote === -1}">&#9660;</button>
+    </span>
+    <span class="sep">&middot;</span>
+    <span>${esc(p.author)}</span>
+    <span class="sep">&middot;</span>
+    <span>${ago(p.createdAt)}</span>
+    <span class="sep">&middot;</span>
+    <a href="/p/${esc(p.slug)}">${p.commentCount} comment${p.commentCount === 1 ? '' : 's'}</a>
+    <span class="sep">&middot;</span>
+    <button class="share-link" type="button">Share</button>
   </div>
 </li>`;
 }
@@ -134,11 +150,34 @@ function itemMarkup(p) {
 
 function wireVoting(root) {
   root.addEventListener('click', async (e) => {
+    const li = e.target.closest('[data-id]');
+    if (!li) return;
+
+    const share = e.target.closest('.share-link');
+    if (share) {
+      const url = `${location.origin}/p/${li.dataset.slug}`;
+      const title = li.querySelector('.item__head a')?.textContent || '';
+      try {
+        if (navigator.share) await navigator.share({ title, url });
+        else { await navigator.clipboard.writeText(url); flash('Link copied.', true); }
+      } catch { /* user dismissed the share sheet */ }
+      return;
+    }
+
+    const ask = e.target.closest('[data-plaus]');
+    if (ask) {
+      try {
+        const { post } = await api(`/api/posts/${li.dataset.id}/plausibility`, { method: 'POST', body: { score: Number(ask.dataset.plaus) } });
+        li.querySelector('.ask').outerHTML = askMarkup(post);
+      } catch (err) {
+        flash(err.message);
+      }
+      return;
+    }
+
     const up = e.target.closest('.vote-up');
     const down = e.target.closest('.vote-down');
     if (!up && !down) return;
-    const li = e.target.closest('[data-id]');
-    if (!li) return;
     const dir = up ? 1 : -1;
     try {
       const { post } = await api(`/api/posts/${li.dataset.id}/vote`, { method: 'POST', body: { dir } });
@@ -182,6 +221,10 @@ async function viewFeed() {
           When reality catches up with one, it goes on the permanent record.
         </p>
       </div>
+      <p class="rider">
+        <span class="rider__label">Notice to President DJT</span>
+        Any money you make from ideas on this site, I expect a 50% cut.
+      </p>
     </div>
     <div class="sorts">
       <button data-sort="hot" aria-pressed="${sort === 'hot'}">Hot</button>
@@ -190,7 +233,7 @@ async function viewFeed() {
       <span class="count" id="count"></span>
     </div>
     <ul class="feed" id="feed"></ul>
-    <p class="loading" id="loading">Reading the wire&hellip;</p>
+    <p class="loading" id="loading">Loading&hellip;</p>
   `);
 
   const feed = document.getElementById('feed');
@@ -209,7 +252,7 @@ async function viewFeed() {
     if (!data.posts.length) {
       feed.replaceWith(h(`
         <div class="empty">
-          <h2>The wire is empty.</h2>
+          <h2>Nothing here yet.</h2>
           <p>
             No proposals on file yet. The bar: less believable than what actually happened this week.
           </p>
@@ -219,15 +262,15 @@ async function viewFeed() {
     }
     feed.innerHTML = data.posts.map(itemMarkup).join('');
   } catch (err) {
-    document.getElementById('loading').textContent = 'Could not reach the wire. Refresh to try again.';
+    document.getElementById('loading').textContent = 'Could not load proposals. Refresh to try again.';
   }
 }
 
 async function viewReality() {
   render('reality', `
     <div class="article">
-      <p class="article__slug mono">Standing Archive</p>
-      <h2 class="article__head">Overtaken by Reality</h2>
+      <p class="article__slug mono">The record</p>
+      <h2 class="article__head">Came True</h2>
       <p class="article__body">
         Proposals that started as jokes and then happened. Each one carries its sources
         and the date it stopped being funny.
@@ -251,7 +294,7 @@ async function viewReality() {
             Nothing has been overtaken yet. Three readers flag a proposal with a source,
             it lands here for good.
           </p>
-          <a class="btn btn--quiet" href="/">Back to the wire</a>
+          <a class="btn btn--quiet" href="/">Back to proposals</a>
         </div>`));
       return;
     }
@@ -272,7 +315,7 @@ async function viewPost() {
   try {
     data = await api(`/api/posts/${encodeURIComponent(BOOT.slug)}`);
   } catch {
-    render('post', '<div class="empty"><h2>No such proposal.</h2><p>It may have been withdrawn.</p><a class="btn btn--quiet" href="/">Back to the wire</a></div>');
+    render('post', '<div class="empty"><h2>No such proposal.</h2><p>It may have been withdrawn.</p><a class="btn btn--quiet" href="/">Back to proposals</a></div>');
     return;
   }
 
@@ -283,7 +326,7 @@ async function viewPost() {
   <article class="article" data-id="${p.id}">
     <p class="article__slug mono">
       Proposal &middot; Filed ${ago(p.createdAt)} &middot; ${esc(p.author)}
-      ${p.overtaken ? ' &middot; <span class="stamp">&#9635; Overtaken by reality</span>' : ''}
+      ${p.overtaken ? ' &middot; <span class="stamp">&#9635; Came true</span>' : ''}
       ${p.blackMarked ? ' &middot; <span class="stamp is-mark">&#9632; Black mark</span>' : ''}
     </p>
     <h2 class="article__head">${esc(p.headline)}</h2>
@@ -499,8 +542,8 @@ function saveShareImage(p) {
 function viewSubmit() {
   render('submit', `
     <div class="article">
-      <p class="article__slug mono">Wire Desk</p>
-      <h2 class="article__head">File a Proposal</h2>
+      <p class="article__slug mono">New proposal</p>
+      <h2 class="article__head">Submit a proposal</h2>
       <p class="article__body">
         Can you out-Trump the Trump? Genius or insane? Share your thoughts.
       </p>
@@ -518,11 +561,11 @@ function viewSubmit() {
                   placeholder="Two or three sentences of straight-faced justification."></textarea>
       </div>
       <div class="field">
-        <label for="desk">Desk</label>
+        <label for="desk">Category <span class="hint">(optional)</span></label>
         <select id="desk" name="desk">
           <option value="general">General</option>
           <option value="economy">Economy</option>
-          <option value="foreign">Foreign Desk</option>
+          <option value="foreign">Foreign</option>
           <option value="interior">The Interior</option>
           <option value="ceremonial">Ceremonial Affairs</option>
           <option value="justice">Justice</option>
@@ -536,7 +579,7 @@ function viewSubmit() {
       <p class="notice">
         Reviewed before posting. No real quotes, no private individuals, nothing violent.
       </p>
-      <button class="btn" type="submit">Transmit proposal</button>
+      <button class="btn" type="submit">Post it</button>
     </form>
   `);
 
@@ -572,7 +615,7 @@ function viewSubmit() {
 function viewAbout() {
   render('about', `
     <div class="article">
-      <p class="article__slug mono">Masthead</p>
+      <p class="article__slug mono">How it works</p>
       <h2 class="article__head">About</h2>
       <div class="article__body">
         <p>
@@ -587,7 +630,7 @@ function viewAbout() {
         </p>
         <p>
           <strong>Reality Check.</strong> When a proposal actually happens, flag it with a
-          link. Three flags move it to <a href="/reality">Overtaken by Reality</a> for good.
+          link. Three flags move it to <a href="/reality">Came True</a> for good.
           That archive is the whole point.
         </p>
         <p>
@@ -640,7 +683,7 @@ function viewNotFound() {
     <div class="empty">
       <h2>No such page.</h2>
       <p>The file you asked for isn't in the cabinet.</p>
-      <a class="btn btn--quiet" href="/">Back to the wire</a>
+      <a class="btn btn--quiet" href="/">Back to proposals</a>
     </div>`);
 }
 
@@ -649,7 +692,7 @@ function viewError() {
     <div class="empty">
       <h2>Something broke on our end.</h2>
       <p>Not your fault. Try again in a moment.</p>
-      <a class="btn btn--quiet" href="/">Back to the wire</a>
+      <a class="btn btn--quiet" href="/">Back to proposals</a>
     </div>`);
 }
 

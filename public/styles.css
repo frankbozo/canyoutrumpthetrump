@@ -7,6 +7,7 @@
 :root {
   /* Light — bond paper, not cream */
   --paper:      #FBFAF7;
+  --logo-bg:    transparent;
   --surface:    #FFFFFF;
   --ink:        #16161A;
   --muted:      #6B6B74;   /* grey pulled slightly toward the accent */
@@ -31,6 +32,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --paper:      #131418;
+    --logo-bg:    #F2F0EA;
     --surface:    #191A1F;
     --ink:        #E9E7E1;
     --muted:      #8E8F99;
@@ -47,6 +49,7 @@
 
 :root[data-theme='dark'] {
   --paper:      #131418;
+  --logo-bg:    #F2F0EA;
   --surface:    #191A1F;
   --ink:        #E9E7E1;
   --muted:      #8E8F99;
@@ -142,6 +145,10 @@ a:hover { text-decoration-color: var(--accent); }
   display: block;
   width: min(100%, 420px);
   height: auto;
+  background: var(--logo-bg);
+  border-radius: 10px;
+  padding: .35rem .6rem;
+  box-sizing: border-box;
 }
 
 .masthead__side {
@@ -244,9 +251,6 @@ main { padding-block: 1.25rem 4rem; }
 .feed { list-style: none; margin: 0; padding: 0; }
 
 .item {
-  display: grid;
-  grid-template-columns: 2.75rem 1fr;
-  gap: 0 1rem;
   padding-block: 1.35rem;
   border-bottom: 1px solid var(--rule);
 }
@@ -254,11 +258,11 @@ main { padding-block: 1.25rem 4rem; }
 .item.is-marked { opacity: .62; }
 .item.is-overtaken { background: var(--stamp-dim); margin-inline: -1rem; padding-inline: 1rem; }
 
-/* vote rail */
-.rail { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding-top: .15rem; }
+/* vote rail: demoted to the meta line; plausibility is the main event */
+.rail { display: inline-flex; align-items: center; gap: .15rem; }
 .rail button {
   background: none; border: 0; cursor: pointer; color: var(--faint);
-  line-height: 1; padding: .15rem .3rem; font-size: .8rem;
+  line-height: 1; padding: .1rem .2rem; font-size: .65rem;
 }
 .rail button:hover { color: var(--ink); }
 .rail button[aria-pressed='true'] { color: var(--accent); }
@@ -281,7 +285,31 @@ main { padding-block: 1.25rem 4rem; }
 .item__head a { text-decoration: none; }
 .item__head a:hover { text-decoration: underline; text-decoration-color: var(--accent); }
 
-.item__lede { margin: 0 0 .45rem; color: var(--muted); font-size: .9688rem; }
+.item__lede { margin: 0 0 .7rem; color: var(--muted); font-size: .9688rem; }
+
+/* "Would this actually happen?" one-tap vote */
+.ask {
+  display: flex; align-items: center; gap: .6rem .8rem; flex-wrap: wrap;
+  margin: 0 0 .6rem;
+  font-family: var(--f-mono); font-size: .6875rem; letter-spacing: .05em;
+  color: var(--muted);
+}
+.ask__q { text-transform: uppercase; font-weight: 600; color: var(--ink); }
+.ask__btns { display: inline-flex; gap: .3rem; }
+.ask__btns button {
+  background: none; border: 1px solid var(--rule-firm); cursor: pointer;
+  color: var(--ink); padding: .32rem .7rem; border-radius: 999px;
+  font: inherit; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+}
+.ask__btns button:hover { border-color: var(--ink); }
+.ask__btns button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ask__crowd strong { color: var(--accent); font-size: .875rem; font-variant-numeric: tabular-nums; }
+
+.share-link {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  letter-spacing: inherit; text-transform: inherit; color: var(--muted);
+}
+.share-link:hover { color: var(--accent); }
 
 .item__meta {
   display: flex; align-items: center; gap: .55rem; flex-wrap: wrap;
@@ -444,14 +472,14 @@ footer .made { font-family: var(--f-mono); font-size: .6875rem; letter-spacing: 
 
 /* The rider. Sits under the earnest disclaimer, in the register of an
    official addendum — the straight face is the whole joke. */
-footer .rider {
+.rider {
   border-left: 2px solid var(--accent);
   padding-left: .9rem;
   max-width: var(--measure);
   margin: 0 0 1rem;
   color: var(--ink);
 }
-footer .rider__label {
+.rider__label {
   display: block;
   font-family: var(--f-mono);
   font-size: .625rem;
@@ -486,7 +514,7 @@ footer .rider__label {
      onto a lonely second row. */
   nav.sections .spacer { display: none; }
   nav.sections { gap: .9rem; }
-  .item { grid-template-columns: 2.25rem 1fr; gap: 0 .75rem; }
+  .ask__btns button { padding: .4rem .8rem; }
   .item__head { font-size: 1.0625rem; }
   body { font-size: 1rem; }
 }
