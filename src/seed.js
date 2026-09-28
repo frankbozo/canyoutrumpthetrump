@@ -35,7 +35,15 @@ export const DEFAULT_SEED_FILE = path.join(__dirname, '..', 'seed.json');
 export async function loadSeed(file = DEFAULT_SEED_FILE) {
   const rows = JSON.parse(await fs.readFile(file, 'utf8'));
   if (!Array.isArray(rows)) throw new Error('seed.json must contain an array');
+  return insertRows(rows);
+}
 
+/**
+ * Insert an array of seed-shaped rows straight to live, skipping any
+ * headline already on file. Shared by the seed file and the admin bulk
+ * import. Returns the count added.
+ */
+export async function insertRows(rows) {
   let added = 0;
   for (const row of rows) {
     const headline = String(row.headline || '').trim();

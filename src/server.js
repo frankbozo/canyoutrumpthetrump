@@ -10,7 +10,7 @@ import {
 } from './lib.js';
 import { shell } from './views.js';
 import { notifySubmission, notifyStatus } from './notify.js';
-import { loadSeed } from './seed.js';
+import { loadSeed, insertRows } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -632,6 +632,21 @@ app.post('/api/admin/schedule/spread', requireAdmin, async (req, res, next) => {
 
     console.log(`[schedule] ${out.length} post(s) spread over ${hours}h`);
     res.json({ scheduled: out.length, kept: keepLive, hours, posts: out });
+  } catch (e) { next(e); }
+});
+
+/**
+ * Bulk import. body: { posts: [ { headline, body, author, desk } ] }
+ * Same shape as seed.json, same rules: straight to live, duplicate
+ * headlines skipped, no submit rate limit since this is the desk's own
+ * content. Capped at 100 rows a call.
+ */
+app.post('/api/admin/import', requireAdmin, async (req, res, next) => {
+  try {
+    const rows = Array.isArray(req.body.posts) ? req.body.posts.slice(0, 100) : null;
+    if (!rows) return res.status(400).json({ error: 'bad_request', message: 'Send { posts: [...] }.' });
+    const added = await insertRows(rows);
+    res.json({ added, skipped: rows.length - added });
   } catch (e) { next(e); }
 });
 
