@@ -577,7 +577,7 @@ function viewSubmit() {
         <span class="hint">A pen name. Don't use a real person's name.</span>
       </div>
       <p class="notice">
-        Reviewed before posting. No real quotes, no private individuals, nothing violent.
+        Anything goes. It's live the second you post it. Pen names only.
       </p>
       <button class="btn" type="submit">Post it</button>
     </form>
@@ -657,8 +657,8 @@ function viewTerms() {
         against anyone. Content sexualising minors. Personal information &mdash; addresses,
         phone numbers, ID or account numbers. Impersonation of a real person or outlet.</p>
 
-        <p><strong>Moderation.</strong> Submissions are reviewed before publication. Anything
-        can be removed at any time for any reason. Reported items are reviewed by a human.</p>
+        <p><strong>Moderation.</strong> Submissions publish immediately. Anything can be
+        removed at any time for any reason. Reported items are reviewed by a human.</p>
 
         <p><strong>Takedowns.</strong> If something here names you, misrepresents you, or
         infringes your rights, write to the address below with a link to the item and what
