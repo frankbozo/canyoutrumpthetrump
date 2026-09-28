@@ -122,10 +122,10 @@ a:hover { text-decoration-color: var(--accent); }
 
 .masthead__inner {
   display: flex;
-  align-items: baseline;
-  gap: 1rem;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
   flex-wrap: wrap;
-  padding-block: 1.6rem .9rem;
+  padding-block: 1.4rem .9rem;
 }
 
 .masthead__title {
@@ -136,7 +136,20 @@ a:hover { text-decoration-color: var(--accent); }
   margin: 0;
   text-wrap: balance;
 }
-.masthead__title a { text-decoration: none; }
+.masthead__title a { text-decoration: none; display: block; }
+
+.masthead__logo {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+}
+
+.masthead__side {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
 
 .masthead__tag {
   color: var(--muted);

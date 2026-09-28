@@ -47,10 +47,11 @@ function chrome(current, inner) {
   return `
 <header class="masthead">
   <div class="wrap masthead__inner">
-    <h1 class="masthead__title"><a href="/">Can You Trump the Trump?</a></h1>
-    <span class="badge-satire">Satire</span>
-    <p class="masthead__tag masthead__tag--lead">DO WORSE.</p>
-    <p class="masthead__tag">Every other outlet stands accused of inventing the news. We simply start here.</p>
+    <h1 class="masthead__title"><a href="/"><img class="masthead__logo" src="/logo.png" alt="Can You Trump the Trump?" width="1544" height="508"></a></h1>
+    <div class="masthead__side">
+      <span class="badge-satire">Satire</span>
+      <p class="masthead__tag masthead__tag--lead">DO WORSE.</p>
+    </div>
   </div>
   <div class="wrap dateline mono">
     <span>Wire Desk &middot; Vol. 1</span>
@@ -73,18 +74,12 @@ function chrome(current, inner) {
       <a href="/about">About</a><a href="/terms">Terms &amp; Takedowns</a><a href="/submit">File a Proposal</a>
     </div>
     <p class="disclaimer">
-      <strong>This is a work of satire.</strong> Every proposal on this site is invented by a
-      member of the public as a joke. Nothing here is a real policy, a real quote, or a real
-      statement by any real person, and nothing here is reported as news.
+      <strong>Satire.</strong> Every proposal here is invented by a member of the public.
+      Nothing is a real policy, quote, or statement by anyone.
     </p>
     <p class="rider">
       <span class="rider__label">Notice to President DJT</span>
-      For any money you make from ideas on this site, I expect a 50% cut.
-      Open to negotiating a deal.
-    </p>
-    <p class="rider">
-      With the news already accused of making itself up, we may as well do it properly.
-      Open to the smartest and the brightest. We are America and we are great again.
+      Any money you make from ideas on this site, I expect a 50% cut.
     </p>
     <p class="made">Proudly created in Canada &#127809;</p>
   </div>
@@ -181,15 +176,11 @@ async function viewFeed() {
     <div class="article">
       <div class="article__body">
         <p>
-          <em>Idiocracy</em> was released as a comedy and is now routinely cited as a
-          forecast. Nobody here knows what comes after it. This desk has run out of ideas and
-          is accepting submissions on step two.
+          Invent a policy. Write it straight. Vote for the ones that could actually happen.
         </p>
         <p>
-          Anyone with a straight face and a mean streak is welcome to file. When reality
-          catches up with a proposal, it goes on the permanent record &mdash; and whether that
-          record reads as comedy or as tragedy, we accept both sides. Three confirmations and
-          you stop being a reader. You become talent.
+          When reality catches up with one, it goes on the permanent record.
+          Three of yours confirmed and we should talk.
         </p>
       </div>
     </div>
@@ -221,9 +212,7 @@ async function viewFeed() {
         <div class="empty">
           <h2>The wire is empty.</h2>
           <p>
-            No proposals on file yet. The first one sets the tone for everything after it,
-            so make it count &mdash; and remember the bar: it has to be less believable than
-            what actually happened this week.
+            No proposals on file yet. The bar: less believable than what actually happened this week.
           </p>
           <a class="btn" href="/submit">File the first proposal</a>
         </div>`));
@@ -241,11 +230,8 @@ async function viewReality() {
       <p class="article__slug mono">Standing Archive</p>
       <h2 class="article__head">Overtaken by Reality</h2>
       <p class="article__body">
-        Proposals that readers invented as jokes, and that the news subsequently
-        caught up with. Each one carries the sources that confirmed it, and the date it
-        stopped being funny. What accumulates here is a live historical timeline of this
-        period. Whether it reads as comedy or as tragedy is not for us to decide, and we
-        accept both sides.
+        Proposals that started as jokes and then happened. Each one carries its sources
+        and the date it stopped being funny.
       </p>
     </div>
     <ul class="feed" id="feed"></ul>
@@ -263,17 +249,8 @@ async function viewReality() {
         <div class="empty">
           <h2>Reality is, for now, behind.</h2>
           <p>
-            Nothing on the wire has been overtaken yet. When three readers independently
-            flag a proposal as already having happened &mdash; each with a source &mdash;
-            it lands here permanently.
-          </p>
-          <p>
-            Three confirmations and you stop being a reader. You become talent. The open
-            question is whether anyone can out-file the esteemed businessman, television
-            personality and well-known playboy who currently holds the record. We are securing
-            talent for the future of the United States, and a confirmed hat trick grants you
-            access to our onboarding session: a new apprentice, working title
-            <em>Donald Trump Jr.</em>, broadcast rights pending.
+            Nothing has been overtaken yet. Three readers flag a proposal with a source,
+            it lands here for good.
           </p>
           <a class="btn btn--quiet" href="/">Back to the wire</a>
         </div>`));
@@ -526,13 +503,8 @@ function viewSubmit() {
       <p class="article__slug mono">Wire Desk</p>
       <h2 class="article__head">File a Proposal</h2>
       <p class="article__body">
-        One rule: it has to be less believable than what actually happened this week.
-        Write it straight, the way a real bulletin would. The deadpan is the joke.
-      </p>
-      <p class="article__body">
-        This desk has run out of ideas and is accepting submissions on step two. Anyone
-        with a straight face and a mean streak is welcome to file. Three confirmations and you
-        stop being a reader. You become talent.
+        One rule: less believable than what actually happened this week.
+        Write it straight. The deadpan is the joke.
       </p>
     </div>
     <form class="form" id="submit-form">
@@ -564,8 +536,7 @@ function viewSubmit() {
         <span class="hint">A pen name. Don't use a real person's name.</span>
       </div>
       <p class="notice">
-        Submissions are reviewed before they go on the wire. Keep it to invented policy:
-        no real quotes, no real private individuals, nothing about violence.
+        Reviewed before posting. No real quotes, no private individuals, nothing violent.
       </p>
       <button class="btn" type="submit">Transmit proposal</button>
     </form>
@@ -604,58 +575,31 @@ function viewAbout() {
   render('about', `
     <div class="article">
       <p class="article__slug mono">Masthead</p>
-      <h2 class="article__head">About this wire</h2>
+      <h2 class="article__head">About</h2>
       <div class="article__body">
         <p>
-          Every day the news is accused of being invented. Here it is invented openly, in
-          public, by whoever turns up, and signed. Nothing on this wire is news. That is the
-          only difference.
+          The news gets accused of being invented. Here it is invented openly, and signed.
         </p>
         <p>
-          Can you file something too absurd to ever happen, or something so plausible it is
-          only a matter of time? Both are accepted. The archive decides which was which.
+          <strong>Post.</strong> Propose something a government might plausibly do but
+          hasn't yet. Write it as straight as a real bulletin.
         </p>
         <p>
-          <em>Idiocracy</em> was released as a comedy and is now routinely cited as a
-          forecast. Nobody here knows what comes after it. This desk has run out of ideas and
-          is accepting submissions on step two.
+          <strong>Vote.</strong> The ones that could happen rise. The lazy ones sink.
         </p>
         <p>
-          Propose something a government might plausibly do that it hasn't done yet, and
-          write it as straight as a real bulletin.
+          <strong>Reality Check.</strong> When a proposal actually happens, flag it with a
+          link. Three flags move it to <a href="/reality">Overtaken by Reality</a> for good.
+          That archive is the whole point.
         </p>
         <p>
-          Readers vote. Proposals that clear the bar rise. Proposals the room finds lazy
-          collect a <strong>black mark</strong> &mdash; that takes at least ten votes, so a
-          new submission can't be buried by two people in a bad mood.
+          <strong>The offer.</strong> Three of your proposals overtaken by reality and we
+          should talk: <a href="mailto:ryan@hypnoticmindscapes.com">ryan@hypnoticmindscapes.com</a>.
+          There's a bigger thing to build for the people who saw it coming.
         </p>
         <p>
-          The part that matters is the <strong>Reality Check</strong>. If a proposal stops
-          being a joke &mdash; if the thing actually happens &mdash; any reader can flag it
-          with a link to the real story. Three independent flags move it permanently to
-          <a href="/reality">Overtaken by Reality</a>. That archive is the actual argument
-          this site is making, and it writes itself. What accumulates there is a live
-          historical timeline of this period. Whether it reads as comedy or as tragedy is not
-          for us to decide, and we accept both sides.
-        </p>
-        <p>
-          If you believe you can outdo what is actually happening, that is a remarkable
-          claim and almost certainly an unachievable one. File anyway. Your contributions are
-          appreciated; someone, somewhere, is clearly taking notes.
-        </p>
-        <p>
-          <strong>The standing offer.</strong> Three proposals moved to
-          <a href="/reality">Overtaken by Reality</a> is the quota. If you hit the quota,
-          we should talk &mdash; <a href="mailto:ryan@hypnoticmindscapes.com">ryan@hypnoticmindscapes.com</a>.
-          There's a bigger thing to build here: Kalshi and Polymarket let you bet on what
-          happens, and we'd rather build the version that pays the people who saw it coming.
-          You need to do worse.
-        </p>
-        <p>
-          Everything here is invented by members of the public as satire. Nothing on this
-          site is a real policy, a real quote, or a real statement by anyone. If something
-          slipped through that shouldn't have, the <a href="/terms">takedown page</a> tells
-          you how to get it removed.
+          All satire. Nothing here is a real policy, quote, or statement by anyone.
+          Takedowns: <a href="/terms">here</a>.
         </p>
       </div>
     </div>`);
