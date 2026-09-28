@@ -736,6 +736,7 @@ async function viewAdmin() {
         <button role="tab" aria-selected="true" data-tab="posts">Pending proposals (${data.posts.length})</button>
         <button role="tab" aria-selected="false" data-tab="comments">Comments (${data.comments.length})</button>
         <button role="tab" aria-selected="false" data-tab="reports">Reports (${data.reports.length})</button>
+        <button role="tab" aria-selected="false" data-tab="cametrue">Mark as came true</button>
       </div>
       <div id="panel"></div>`);
 
@@ -774,6 +775,25 @@ async function viewAdmin() {
             <p class="mono" style="color:var(--muted)">${ago(r.created_at)}</p>
           </div>`).join('')
         : '<p class="empty-line">No reports.</p>',
+      cametrue: () => `
+        <form class="form" id="overtake-form">
+          <div class="field">
+            <label for="ot-post">Proposal</label>
+            <select id="ot-post" name="post" required>
+              <option value="">Pick one&hellip;</option>
+              ${(data.live || []).map((p) => `<option value="${p.id}">${esc(p.headline)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label for="ot-url">Link to the real story</label>
+            <input type="url" id="ot-url" name="source_url" required placeholder="https://">
+          </div>
+          <div class="field">
+            <label for="ot-note">Note <span class="hint">(optional)</span></label>
+            <input type="text" id="ot-note" name="note" maxlength="300" placeholder="One line on what happened.">
+          </div>
+          <button class="btn" type="submit">Mark as came true</button>
+        </form>`,
     };
 
     panel.innerHTML = panels.posts();
@@ -783,6 +803,22 @@ async function viewAdmin() {
       if (!b) return;
       document.querySelectorAll('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t === b)));
       panel.innerHTML = panels[b.dataset.tab]();
+    });
+
+    panel.addEventListener('submit', async (e) => {
+      if (e.target.id !== 'overtake-form') return;
+      e.preventDefault();
+      const f = e.target;
+      const btn = f.querySelector('button');
+      btn.disabled = true;
+      try {
+        const r = await api(`/api/admin/posts/${f.post.value}/overtake`, {
+          method: 'POST', body: { source_url: f.source_url.value, note: f.note.value },
+        });
+        flash(`Marked: ${r.post.headline}`, true);
+        f.reset();
+      } catch (err) { flash(err.message); }
+      btn.disabled = false;
     });
 
     panel.addEventListener('click', async (e) => {
